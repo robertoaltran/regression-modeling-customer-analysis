@@ -1,0 +1,435 @@
+---
+title: "Assigment 2"
+author: "Roberto Altran"
+date: "15/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1.  Analysis of Fortune 500 Companies
+
+(a) Open the dataset MKTVALUE.csv  on stream. This data, kindly provided by former Massey MBA student Alan Chan, is part of a set of data for Fortune 500 companies.  We will consider the relationship between the variables MktValue  (market value of the company) and  Profits (most recent annual profit). The dataset also contains information on Assets (book value of assets)  all in millions of US dollars.
+
+Read in the data and show the head and tail of the variables. 
+
+```{r 1a}
+MKTVALUE = read.csv("/Users/robertoaltran/Documents/regression modeling/MKTVALUE.csv", header=TRUE)
+attach(MKTVALUE )
+```
+
+(b)    Fit a fifth-degree polynomial for MktValue in terms of Profits.
+Comment whether the p-values of the coefficients suggests simplifying  the model. 
+
+```{r , 1b }
+  lm1 = lm(MktValue ~ poly(Profits, 5, raw=TRUE))
+summary(lm1)
+```
+
+
+Comment:   In general the coefficients are significants. But the number 3 is not nthe p-value is >0.05. So, we can make the model better simplifying it.
+
+
+(c) Using the FittedLinePlot function or otherwise, plot the 5th degree polynomial  model for MktValue in terms of Profits, with 95% prediction bounds for the MktValue. Based on the graph, comment on  reasons why the model needs to be improved. 
+
+```{r 1c }
+
+FittedLinePlot = function(xydata, polyn=5,showpoints=TRUE){ 
+x= xydata[,1] ;  y= xydata[,2]
+varname=names(xydata)
+model = lm(y~ poly(x,polyn))
+pred.x = data.frame( x =min(x) + (0:100)*(max(x)-min(x) )/100)
+pred.y =predict(model, newdata = pred.x, interval = "prediction")
+matplot(pred.x, pred.y ,  lty=c(1,2,2), col=c(1,2,2), type="l",xlab =varname[1],ylab=varname[2])
+if(showpoints) matpoints(x,y, pch=1) 
+datapred = predict(model, newdata = data.frame(x), interval = "prediction")
+cbind(xydata,datapred)
+ }
+
+
+m.flp = FittedLinePlot(data.frame(Profits, MktValue), polyn=5)
+
+``` 
+
+Comment:  
+The model is not capturing the data very well.
+
+(d)(i)	Plot the histogram and normal Q-Q plot of the residuals from the 5th degree polynomial in part (b). Are they normal?   If not, describe their distribution.
+
+```{r, 1d }
+hist(lm1$residuals, breaks=c(100))
+qqnorm(lm1$residuals) 
+qqline(lm1$residuals)
+
+```
+
+Comment:  
+They are not normal. I would consider a right-skewed (or positively skewed). 
+
+(d)(ii)	 Explain why would be useless to try to fix normality by plotting log(MktValue)  against log(Profits) ? (Hint: consider the data.)
+
+Comment:   
+Because it can not help with the curve. And also some datas will be not captured. 
+
+
+(e) Suppose we consider a piecewise model which is initially flat and then rises proportionately to Profits.  We  consider a modified predictor  $$Profit_k = k+ (abs( Profit-k)+ Profit-k)/2 ~. $$ 
+The choice of k will be based on the data, with the need to minimize the residual sum of squares.   For example 
+Profit1 will equal 1 whenever the profit is $\le 1$ million),  and will equal Profit whenever Profits exceed 1 million.    We can do this using the formula:
+$$Profit1 =    1+ (abs(Profits-1) +Profits-1)/2 $$   
+
+This formula can be modified for other values of k:
+$$PROF100 =    100+(abs(Profits-100) +Profits-100)/2  $$ 
+$$PROF200 =    200+(abs(Profits-200) +Profits-200)/2  $$  
+       
+Regress (i)  Y=MktValue  against X=‘Profits’.   (only show model summary output). Then  
+similarly  (ii) Y=MKTVALUE against X=‘Profit1’. Is this a better model?
+
+Similarly (iii) regress Y vs Profit100   
+
+and again (iv) Y vs Profit200. 
+
+Which cutpoint gives the best model?     State your criterion for ‘best model’.
+
+```{r}
+Profit1 =  1+ (abs(Profits-1) +Profits-1)/2 
+lm2 = lm( MktValue ~  Profits)
+lm3 = lm( MktValue ~  Profit1)
+summary(lm2)
+summary(lm3)
+Profit2 =  100+ (abs(Profits-100) +Profits-100)/2 
+Profit3 =  200+ (abs(Profits-200) +Profits-200)/2 
+lm4 = lm( MktValue ~  Profit2)
+lm5 = lm( MktValue ~  Profit3)
+summary(lm4)
+summary(lm5)
+
+```
+
+Comment: All them perform good. But the Profit2 is the best model considering the p-value, Residual standard error, and R^2 .
+
+(f) Perform a nonlinear regression of  Mktvalue  vs the model expression   *beta0 + beta1* * *( k + (abs(Profits-k)+Profits-k)/2 )*
+```{r}
+
+Mkt.nls = nls(MktValue ~ beta0 + beta1 *  I(k + (abs(Profits - k) + Profits - k)/2), start = list(k=100,  beta0 = 3239.70,  beta1= 20.97 ), data = MKTVALUE, nls.control(warnOnly = TRUE, minFactor = 1/2048))
+summary (Mkt.nls)
+```
+
+Mkt.nls = nls(Y ~ beta0 + beta1*  I(k + (abs(Profits - k) + Profits - k)/2),      start = list((k=*****,  beta0 = ******,  beta1= ****** , nls.control(warnOnly = TRUE, minFactor = 1/2048))
+    
+Replace the ***** with initial parameter estimates from the best model in part (e).
+
+(i)	Show a summary of the model results. 
+(ii)	Calculate (by hand) a confidence interval for k.  Does this  include your chosen number from part (e)?   Do we know k fairly accurately? 
+(iii)	In terms of residual standard error, is this a better model than the one with your chosen value of k? 
+
+```{r}
+est = summary(Mkt.nls)$coefficients[1]
+se = summary(Mkt.nls)$coefficients[4]
+lower = est + qt(0.025, df = 15 - 3) * se
+upper = est + qt(0.975, df = 15 - 3) * se
+cbind(est, se, lower, upper)
+
+```
+
+Comments: No. According the residual standart error, the best model is Lm4, the one which K was chosen.
+
+
+(g)  Examine the plot() output for your chosen model in (e). Explain why it might be reasonable to think that a weighted regression with weights   Wt $\propto$ 1/Predicted values   might do better.  
+
+```{r}
+ plot(lm4)
+```
+It has heteroscedasticity, which using the weighted regression could help descreasing the heteroscedasticity.
+ 
+
+(h)	Fit a weighted regression of your chosen model in (e) but with Wt= 1/Predicted values.  
+
+(i) Show summary.  
+
+(ii) Calculate the Weighted residuals (i.e. Pearson residuals) and plot them against Profits. 
+
+(iii) Identify the Company with the biggest Weighted residual (Hint: row (1:n)[Wtres==max(Wtres)]  )
+
+(iv) Aside from that Company has the heteroscedasticity been improved? 
+
+```{r, eval=F}
+lmw = lm(MktValue ~ Profit2, weights= 1/predict(lm4))
+summary(lmw)
+n= length(Wtres)
+(1:n)[Wtres==max(Wtres)]
+Company[(1:n)[Wtres==max(Wtres)]]
+plot(Wtres ~ Profits)
+
+```
+
+Comments: 
+Yes it has. 
+
+### 2. Analysis of World Values Survey
+
+Open the  dataset  WVS2005NZAssnt2.csv available on Stream.  This is responses from the 2005 World Values Survey  (some columns deleted and columns renamed).  Variables in the dataset are:
+
+Variable | Description
+--- | --- | ---
+V3ID          | ID number           | Coding method
+V4FamilyImp   | Family is important  |1= Very important, 2= Rather Important, 3= Not Very Important,  4= Not At All Important
+V5FrndsImp    | Friends are important | same as for V4familyImp
+V6LesrImp     | Leisure is important | same as for V4familyImp
+V7PoltcImp    | Politics is important | same as for V4familyImp
+V8WorkImp     | Work is important | same as for V4familyImp
+V9RelgnImp    | Religion is important | same as for V4familyImp
+V10FeelHappy  | Feel Happy  | 1= Very Happy, 2=Quite Happy, 3= Not Very Happy, 4= Not At All Happy
+V11StateofHlth | State of health | 1= Very good health, 2= Good health, 3= Fair Health, 4= Poor health
+V22SatisfLife  | Satisfaction with my life | 1= Dissatisfied, 2,3,4,5,6,7,8,9, 10= Satisfied
+V235Sex       | Sex | 1= male,  2= female
+V237Age       | Age |  years 18,19,...,89,90.
+V238HighEducLev | Highest Eduction Level | 1=No formal education, 2= Primary/Kura/Intermediate, 3= Up to 3 years Secondary, 4= 4 or more years Secondary, 5= Polytech/Wananga/some Uni/etc. 6=Degree
+V253Income      | Income Decile | 1= Lowest Decile, 2,3,3,4,5,6,7,8,9, 10= Highest Decile
+VeryHappy       | Feel Very Happy | 1= True, 0=False
+V23MostTrusted  | Most people can be trusted | 1=True, 0=False
+MaritalStatus | Marital Status | 1=Single/Never married nor partnered, 2= Married/Partnered,  3=Separated/Widowed/Divorced
+
+Use the following code to read in the data and to remove all rows that have any missing values (NA).   Note capital "V"s.
+
+
+```{r}
+WVS = read.csv("/Users/robertoaltran/Documents/regression modeling/WVS2005NZAssnt2.csv",  header=TRUE)
+head(WVS) ; attach(WVS)
+subtotal =V22SatisfLife +V237Age+V11StateofHlth  #finding NAs
+WVS1=WVS[!is.na(subtotal),]
+
+attach(WVS1)
+```
+
+
+(a)	Consider the response variable  V22SatisfLife   (How satisfied are you with your life).   This has levels 1 (Dissatisfied) through to 10 (Satisfied).  Check this response variable  for normality / skewness.   Show graph(s).   What do you conclude? 
+
+```{r}
+plot(V22SatisfLife)
+qqnorm(V22SatisfLife)
+hist(V22SatisfLife)
+
+```
+Comments: 
+Is it not normall distributed, and left skewed. 
+
+(b) Calculate a new variable  Satisfact2  = the square of the Satisfaction variable. 
+
+Fit a  linear model  with response Satisfact2   and covariate V237Age  (Age in years)  and fixed factor V11StateofHlth  (State of Health – subjective).  Also include the interaction of these two.  
+
+```{r}
+summary(V237Age)
+table(V11StateofHlth)
+Satisfact2 = V22SatisfLife**2
+WVS.lm = lm( Satisfact2 ~  V237Age )
+summary(WVS.lm)
+anova(WVS.lm)
+```
+
+
+(i)	Show the summary and anova(). Are Age and State of health significantly related to life satisfaction**2. Is the interaction significant? 
+
+Comment:  
+Yes they are significant.
+
+(ii)	Plot the fitted values from the model against the predictor Age, with separate symbols for each level of State of Health.    Summarise in words what this graph shows you about how life satisfaction varies with Age for each State of Health. 
+
+```{r}
+plot(V237Age,   WVS.lm$fitted.values,  pch= V11StateofHlth, col= V11StateofHlth)
+```
+
+*Comment: * 
+Apparently older people get happier they are. 
+
+(iv)	Using the summary output, or otherwise, what is the formula for the predicted line in terms of Age when State of health is ‘good’ (V11StateofHlth=2)?
+
+ Comment: (Hint write in the form Satisfact2 = a + b *Age)   
+
+
+The reduced dataset WVS2 below has all missing values (NA) removed.  Attach(WVS2) and re-calculate Satisfact2 = V22SatisfLife**2.  
+
+```{r}
+total=apply(WVS,1,sum)   # finding NAs across all columns of WVS
+WVS2=WVS[!is.na(total),]
+attach(WVS2)
+head(WVS2)
+Satisfact2 = V22SatisfLife**2
+```
+
+(c)  Perform a backwards stepwise regression of Satisfact2  vs    all of the variables from v4 Family Important through to v9 Religion Important, and factor(V11StateofHlth), v235 Sex, v237 Age, V238  Highest education level,  V253 Income and factor(MaritalSTatus)  (12 predictors).   See coding hints below.
+
+
+```{r}
+lm.null= lm(Satisfact2 ~ 1)
+lm.full = lm(Satisfact2~ V4FamilyImp	+V5FrndsImp+	V6LesrImp+	V7PoltcImp+	V8WorkImp+	V9RelgnImp+	factor(V11StateofHlth)+ V235Sex + V237Age + V238HighEducLev + V253Income+ factor(MaritalStatus))
+
+lms = step( lm.full, scope=list(lower=lm.null, upper=lm.full), direction="backward")
+
+```
+
+(d)  Looking at the final model selected by the stepwise procedure, interpret the signs of the coefficients (whether significant or not): Life satisfaction is higher when ….?   Note you must look at the coding to know whether high numbers for a variable are better or worse.   (You do not need to interpret the exact numbers of the coefficients)
+
+Comment: 
+
+
+
+(e)  Starting with the final model from the stepwise, Use the PRESS and pred_r-squared function (see topic 26) to find whether or not it is better to include V9RelgnImp  in the model would be best for predicting new data. (Hint you could use the update function - see topic 27.)
+
+
+```{r}
+summary(update(lms,.~.- V9RelgnImp  ))
+
+PRESS <- function(linear.model) {
+    #' calculate the predictive residuals
+    pr <- residuals(linear.model)/(1 - lm.influence(linear.model)$hat)
+    #' calculate the PRESS
+    PRESS <- sum(pr^2)
+    return(PRESS)
+}
+
+pred_r_squared <- function(linear.model) {
+    #' Use anova() to get the sum of squares for the linear model
+    lm.anova <- anova(linear.model)
+    #' Calculate the total sum of squares
+    tss <- sum(lm.anova$"Sum Sq")
+    # Calculate the predictive R^2
+    pred.r.squared <- 1 - PRESS(linear.model)/(tss)
+    return(pred.r.squared)
+}
+        
+```
+
+Comment:  
+
+
+ (f) The binary variable “V23MostTrusted” equals 1 if the respondent indicates that they think most people can be trusted, and 0 otherwise.   Fit a binary logistic regression of V23MostTrusted  on V253Income. 
+
+Show summary output.  What level of income corresponds to 50% of people agreeing that most people can be trusted? 
+ 
+ 
+ 
+```{r}
+attach(WVS2)
+
+table(V23MostTrusted)
+
+WVS.glm1 = glm(V23MostTrusted ~ V253Income, family = binomial, data=WVS2)
+ 
+plot(V253Income , predict(WVS.glm1,  type = "response") )
+
+summary(WVS.glm1)
+
+```
+
+
+
+
+(g) Fit a glm with all the predictors in the previous stepwise model. 
+
+```{r}
+Trust.full= glm(V23MostTrusted ~ V4FamilyImp	+V5FrndsImp+	V6LesrImp+	V7PoltcImp+	V8WorkImp+	V9RelgnImp+	factor(V11StateofHlth)+ V235Sex + V237Age + V238HighEducLev + V253Income+ factor(MaritalStatus), family=binomial)
+Trust.null= glm(V23MostTrusted ~1,  family=binomial)
+Trust.glm = step(Trust.null,  scope=list(Trust.null, upper=Trust.full), direction="forward")
+summary(Trust.glm)
+
+```
+
+
+(i)	In the final step model, which variables  are significant predictors of whether the person feels most people can be trusted?   What do the positive or negative regression coefficients mean, in a practical sense (interpret the sign of the coefficients, not the numbers).      Note you will need to look at the coding to know whether high numbers for a variable are better or worse.
+
+Comment: The significants variables are: V253Income, V237Age, V238HighEducLev, V7PoltcImp,  V8WorkImp and V5FrndsImp. 
+
+(ii)	Which is the most important single predictor of “V23MostTrusted”?
+
+Comment: he most important single predictor of “V23MostTrusted” is V253Income.
+ 
+
+(iii)	Create a  classification table for the final model.  What proportion of individuals are correctly classified? 
+
+```{r}
+predTrust = predict(Trust.glm, type = "response") > 0.5
+table(V23MostTrusted, predTrust)
+```
+
+
+
+
+
+===========================================
+
+Some useful R code
+
+
+---------------------
+
+```{r, eval=F}
+hist(residuals)
+qqnorm(residuals)
+qqline(residuals)
+```
+---------------------
+
+```{r, eval=F}
+FittedLinePlot = function(xydata, polyn = 1) {
+    x = xydata[, 1]
+    y = xydata[, 2]
+    varname = names(xydata)
+    model = lm(y ~ poly(x, polyn))
+    pred.x = data.frame(x = min(x) + (0:100) * (max(x) - min(x))/100)
+    pred.y = predict(model, newdata = pred.x, interval = "prediction")
+    matplot(pred.x, pred.y, lty = c(1, 2, 2), col = c(1, 2, 2), type = "l", xlab = varname[1], 
+        ylab = varname[2])
+    matpoints(x, y, pch = 1)
+    datapred = predict(model, newdata = data.frame(x), interval = "prediction")
+    cbind(xydata, datapred)
+}
+
+m.flp = FittedLinePlot(data.frame(Profits, MktValue), polyn=5)
+```
+
+--------------
+
+```{r, eval=F}
+lm.null=   ?what should this be?
+lm.full = lm(Satisfact2~ V4FamilyImp	+V5FrndsImp+	V6LesrImp+	V7PoltcImp+	V8WorkImp+	V9RelgnImp+	factor(V11StateofHlth)+ V235Sex + V237Age + V238HighEducLev + V253Income+ factor(MaritalStatus))
+
+lms = step( lm.full, scope=list(lower=lm.null, upper=lm.full), direction="backward")
+```
+-------------
+
+
+```{r, eval=F}
+n= length(Wtres)
+(1:n)[Wtres==max(Wtres)]
+Company[(1:n)[Wtres==max(Wtres)]]
+```
+--------------
+
+
+```{r, eval=F}
+plot(x,   lm$fitted.values,    pch=group, col=group)
+```
+--------------
+
+ 
+```{r, eval=F}
+PRESS <- function(linear.model) {
+    #' calculate the predictive residuals
+    pr <- residuals(linear.model)/(1 - lm.influence(linear.model)$hat)
+    #' calculate the PRESS
+    PRESS <- sum(pr^2)
+    return(PRESS)
+}
+
+pred_r_squared <- function(linear.model) {
+    #' Use anova() to get the sum of squares for the linear model
+    lm.anova <- anova(linear.model)
+    #' Calculate the total sum of squares
+    tss <- sum(lm.anova$"Sum Sq")
+    # Calculate the predictive R^2
+    pred.r.squared <- 1 - PRESS(linear.model)/(tss)
+    return(pred.r.squared)
+}
+```
