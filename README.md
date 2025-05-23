@@ -6,7 +6,7 @@ This project was developed as part of the **Regression Modeling** course during 
 **Course name:** Regression Modeling  
 **Institution:** Massey University  
 **Program:** Bachelor of Information Sciences – Major in Data Science  
-**Semester:** [Insert semester and year, e.g., Semester 2, 2023]
+**Semester:** [Semester 2, 2023]
 
 ## 📊 Project Overview
 The objective of this project is to apply linear regression techniques to explore and model customer behavior using real-world data. The analysis includes variable selection, correlation analysis, multicollinearity checks, diagnostic plots, and evaluation of model performance.
